@@ -33,13 +33,15 @@ rcsid[] = "$Id: m_bbox.c,v 1.1 1997/02/03 22:45:10 b1 Exp $";
 #endif
 #include "m_bbox.h"
 
+// CB: used for integer limits. Not included by default in windows
+#include <limits.h>
 
 
 
 void M_ClearBox (fixed_t *box)
 {
-    box[BOXTOP] = box[BOXRIGHT] = MININT;
-    box[BOXBOTTOM] = box[BOXLEFT] = MAXINT;
+    box[BOXTOP] = box[BOXRIGHT] = INT_MIN; // CB: replace MININT with INT_MIN
+    box[BOXBOTTOM] = box[BOXLEFT] = INT_MAX; // CB: replace MAXINT with INT_MAX
 }
 
 void

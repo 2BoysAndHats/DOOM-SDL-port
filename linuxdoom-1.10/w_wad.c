@@ -48,7 +48,7 @@ rcsid[] = "$Id: w_wad.c,v 1.5 1997/02/03 16:47:57 b1 Exp $";
 #endif
 #include "w_wad.h"
 
-
+#include <fcntl.h> // CB: windows file constants
 
 
 
@@ -160,7 +160,7 @@ void W_AddFile (char *filename)
 	reloadlump = numlumps;
     }
 		
-    if ( (handle = open (filename,O_RDONLY | O_BINARY)) == -1)
+    if ( (handle = open (filename, _O_RDONLY | _O_BINARY)) == -1)
     {
 	printf (" couldn't open %s\n",filename);
 	return;
