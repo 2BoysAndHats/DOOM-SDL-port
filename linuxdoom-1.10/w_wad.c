@@ -48,8 +48,9 @@ rcsid[] = "$Id: w_wad.c,v 1.5 1997/02/03 16:47:57 b1 Exp $";
 #endif
 #include "w_wad.h"
 
-#include <fcntl.h> // CB: windows file constants
-
+// CB: import windows-specific file handling stuff
+#include <fcntl.h>
+#include <sys/stat.h>
 
 
 
@@ -73,9 +74,9 @@ void strupr (char* s)
 
 int filelength (int handle) 
 { 
-    struct stat	fileinfo;
+    struct _stat fileinfo; // CB: change stat to _stat
     
-    if (fstat (handle,&fileinfo) == -1)
+    if (_fstat (handle,&fileinfo) == -1) // CB: change fstat to _fstat
 	I_Error ("Error fstating");
 
     return fileinfo.st_size;
