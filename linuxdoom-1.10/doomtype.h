@@ -20,22 +20,34 @@
 //    
 //-----------------------------------------------------------------------------
 
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <stdbool.h>
 
+typedef bool boolean;
+typedef unsigned char byte;
+
+/*
 #ifndef __DOOMTYPE__
 #define __DOOMTYPE__
 
 
 #ifndef __BYTEBOOL__
 #define __BYTEBOOL__
+
+
+
 // Fixed to use builtin bool type with C++.
+
 #ifdef __cplusplus
 typedef bool boolean;
 #else
 typedef enum {false, true} boolean;
 #endif
+
+
 typedef unsigned char byte;
 #endif
-
 
 // Predefined with some OS.
 #ifdef LINUX
@@ -59,6 +71,7 @@ typedef unsigned char byte;
 
 
 #endif
+*/
 //-----------------------------------------------------------------------------
 //
 // $Log:$

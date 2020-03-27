@@ -319,7 +319,7 @@ void R_GenerateLookup (int texnum)
     //  that are covered by more than one patch.
     // Fill in the lump / offset, so columns
     //  with only a single patch are all done.
-    patchcount = (byte *)alloca (texture->width);
+    patchcount = (byte *) _alloca (texture->width); // CB: linux function for a windows one
     memset (patchcount, 0, texture->width);
     patch = texture->patches;
 		
@@ -448,7 +448,7 @@ void R_InitTextures (void)
     names = W_CacheLumpName ("PNAMES", PU_STATIC);
     nummappatches = LONG ( *((int *)names) );
     name_p = names+4;
-    patchlookup = alloca (nummappatches*sizeof(*patchlookup));
+    patchlookup = _alloca (nummappatches*sizeof(*patchlookup)); // CB: linux function for a windows one
     
     for (i=0 ; i<nummappatches ; i++)
     {
@@ -702,7 +702,7 @@ int	R_CheckTextureNumForName (char *name)
 	return 0;
 		
     for (i=0 ; i<numtextures ; i++)
-	if (!strncasecmp (textures[i]->name, name, 8) )
+	if (!_strnicmp (textures[i]->name, name, 8) )
 	    return i;
 		
     return -1;
@@ -759,7 +759,7 @@ void R_PrecacheLevel (void)
 	return;
     
     // Precache flats.
-    flatpresent = alloca(numflats);
+    flatpresent = _alloca(numflats); // CB: linux function for a windows one
     memset (flatpresent,0,numflats);	
 
     for (i=0 ; i<numsectors ; i++)
@@ -781,7 +781,7 @@ void R_PrecacheLevel (void)
     }
     
     // Precache textures.
-    texturepresent = alloca(numtextures);
+    texturepresent = _alloca(numtextures); // CB: linux function for a windows one
     memset (texturepresent,0, numtextures);
 	
     for (i=0 ; i<numsides ; i++)
@@ -816,7 +816,7 @@ void R_PrecacheLevel (void)
     }
     
     // Precache sprites.
-    spritepresent = alloca(numsprites);
+    spritepresent = _alloca(numsprites); // CB: linux function for a windows one
     memset (spritepresent,0, numsprites);
 	
     for (th = thinkercap.next ; th != &thinkercap ; th=th->next)

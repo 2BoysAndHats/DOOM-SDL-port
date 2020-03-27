@@ -161,7 +161,8 @@ myioctl
 ( int	fd,
   int	command,
   int*	arg )
-{   
+{
+	/*
     int		rc;
     extern int	errno;
     
@@ -171,7 +172,7 @@ myioctl
 	fprintf(stderr, "ioctl(dsp,%d,arg) failed\n", command);
 	fprintf(stderr, "errno=%d\n", errno);
 	exit(-1);
-    }
+    }*/
 }
 
 

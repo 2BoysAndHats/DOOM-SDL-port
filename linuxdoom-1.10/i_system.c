@@ -94,11 +94,6 @@ struct timezone
 	int  tz_dsttime;     /* type of dst correction */
 };
 
-typedef struct _FILETIME {
-	DWORD dwLowDateTime;
-	DWORD dwHighDateTime;
-} FILETIME;
-
 struct timeval {
 	long tv_sec;
 	long tv_usec;
@@ -180,6 +175,19 @@ void I_Quit (void)
     M_SaveDefaults ();
     I_ShutdownGraphics();
     exit(0);
+}
+
+void usleep(unsigned int usec)
+{
+	HANDLE timer;
+	LARGE_INTEGER ft;
+
+	ft.QuadPart = -(10 * (__int64)usec);
+
+	timer = CreateWaitableTimer(NULL, true, NULL);
+	SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+	WaitForSingleObject(timer, INFINITE);
+	CloseHandle(timer);
 }
 
 void I_WaitVBL(int count)

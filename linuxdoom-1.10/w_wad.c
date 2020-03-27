@@ -64,10 +64,10 @@ int			numlumps;
 
 void**			lumpcache;
 
-
+#define strcasecmp _stricmp // CB: map a linux-y function to a windows one
 #define strcmpi	strcasecmp
 
-void strupr (char* s)
+void strupr_doom (char* s)
 {
     while (*s) { *s = toupper(*s); s++; }
 }
@@ -197,7 +197,7 @@ void W_AddFile (char *filename)
 	header.numlumps = LONG(header.numlumps);
 	header.infotableofs = LONG(header.infotableofs);
 	length = header.numlumps*sizeof(filelump_t);
-	fileinfo = alloca (length);
+	fileinfo = _alloca (length); // CB: linux function for a windows one
 	lseek (handle, header.infotableofs, SEEK_SET);
 	read (handle, fileinfo, length);
 	numlumps += header.numlumps;
@@ -254,7 +254,7 @@ void W_Reload (void)
     lumpcount = LONG(header.numlumps);
     header.infotableofs = LONG(header.infotableofs);
     length = lumpcount*sizeof(filelump_t);
-    fileinfo = alloca (length);
+    fileinfo = _alloca (length); // CB: linux function for a windows one
     lseek (handle, header.infotableofs, SEEK_SET);
     read (handle, fileinfo, length);
     
@@ -368,7 +368,7 @@ int W_CheckNumForName (char* name)
     name8.s[8] = 0;
 
     // case insensitive
-    strupr (name8.s);		
+    strupr_doom (name8.s);		
 
     v1 = name8.x[0];
     v2 = name8.x[1];
