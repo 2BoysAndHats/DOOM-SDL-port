@@ -94,10 +94,10 @@ struct timezone
 	int  tz_dsttime;     /* type of dst correction */
 };
 
-struct timeval {
+/*struct timeval {
 	long tv_sec;
 	long tv_usec;
-};
+};*/
 
 int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
@@ -234,7 +234,7 @@ void I_Error (char *error, ...)
     va_start (argptr,error);
     fprintf (stderr, "Error: ");
     vfprintf (stderr,error,argptr);
-    fprintf (stderr, "\n");
+    printf (stderr, "\n");
     va_end (argptr);
 
     fflush( stderr );
@@ -245,6 +245,6 @@ void I_Error (char *error, ...)
 
     D_QuitNetGame ();
     I_ShutdownGraphics();
-    
+
     exit(-1);
 }

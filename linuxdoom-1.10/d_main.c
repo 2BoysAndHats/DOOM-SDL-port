@@ -30,7 +30,7 @@ static const char rcsid[] = "$Id: d_main.c,v 1.8 1997/02/03 22:45:09 b1 Exp $";
 #define	BGCOLOR		7
 #define	FGCOLOR		8
 
-#define R_OK 06 // CB: linux constant not defined on windows. Flag to "access" function - can we read and write x?
+#define R_OK 04 // CB: linux constant not defined on windows. Flag to "access" function - can we read?
 
 
 #ifdef NORMALUNIX
@@ -41,7 +41,6 @@ static const char rcsid[] = "$Id: d_main.c,v 1.8 1997/02/03 22:45:09 b1 Exp $";
 #include <sys/stat.h>
 #include <fcntl.h>
 #endif
-
 
 #include "doomdef.h"
 #include "doomstat.h"
@@ -562,6 +561,10 @@ void D_AddFile (char *file)
 // to determine whether registered/commercial features
 // should be executed (notably loading PWAD's).
 //
+
+// CB: due to some weird sprintf errors, hardcoded for now
+// TODO: better identification of WAD files
+
 void IdentifyVersion (void)
 {
 
@@ -574,7 +577,6 @@ void IdentifyVersion (void)
     char*	plutoniawad;
     char*	tntwad;
 
-#ifdef NORMALUNIX
     char *home;
     char *doomwaddir;
     doomwaddir = getenv("DOOMWADDIR");
@@ -586,13 +588,13 @@ void IdentifyVersion (void)
     sprintf(doom2wad, "%s/doom2.wad", doomwaddir);
 
     // Retail.
-    doomuwad = malloc(strlen(doomwaddir)+1+8+1);
+    doomuwad = malloc(strlen(doomwaddir)+1+9+1);
     sprintf(doomuwad, "%s/doomu.wad", doomwaddir);
-    
+
     // Registered.
     doomwad = malloc(strlen(doomwaddir)+1+8+1);
     sprintf(doomwad, "%s/doom.wad", doomwaddir);
-    
+
     // Shareware.
     doom1wad = malloc(strlen(doomwaddir)+1+9+1);
     sprintf(doom1wad, "%s/doom1.wad", doomwaddir);
@@ -605,16 +607,17 @@ void IdentifyVersion (void)
     tntwad = malloc(strlen(doomwaddir)+1+9+1);
     sprintf(tntwad, "%s/tnt.wad", doomwaddir);
 
-
     // French stuff.
     doom2fwad = malloc(strlen(doomwaddir)+1+10+1);
     sprintf(doom2fwad, "%s/doom2f.wad", doomwaddir);
 
-    home = getenv("HOME");
-    if (!home)
-      I_Error("Please set $HOME to your home directory");
-    sprintf(basedefault, "%s/.doomrc", home);
-#endif
+	
+    //home = getenv("HOME");
+    //if (!home)
+    //  I_Error("Please set $HOME to your home directory");
+    
+	//TODO: better handling of base directory location
+	sprintf(basedefault, "./.doomrc");
 
     if (M_CheckParm ("-shdev"))
     {
@@ -1023,7 +1026,7 @@ void D_DoomMain (void)
     W_InitMultipleFiles (wadfiles);
     
 
-    // Check for -file in shareware
+    // Check for - file in shareware
     if (modifiedgame)
     {
 	// These are the lumps that will be checked in IWAD,

@@ -23,6 +23,7 @@
 #ifndef __DOOMDEF__
 #define __DOOMDEF__
 
+#include <Windows.h>
 #include <stdio.h>
 #include <string.h>
 
