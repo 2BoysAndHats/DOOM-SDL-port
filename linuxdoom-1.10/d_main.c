@@ -562,8 +562,6 @@ void D_AddFile (char *file)
 // should be executed (notably loading PWAD's).
 //
 
-// CB: due to some weird sprintf errors, hardcoded for now
-// TODO: better identification of WAD files
 
 void IdentifyVersion (void)
 {
@@ -1105,7 +1103,6 @@ void D_DoomMain (void)
     printf ("I_Init: Setting up machine state.\n");
     I_Init ();
 
-	// CB: networking not implemented yet. Crashes here. TODO: stub out enough networking to make it not crash.
 	printf ("D_CheckNetGame: Checking network game status.\n");
     D_CheckNetGame ();
 

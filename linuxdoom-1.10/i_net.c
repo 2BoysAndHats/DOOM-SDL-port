@@ -35,6 +35,8 @@ rcsid[] = "$Id: m_bbox.c,v 1.1 1997/02/03 22:45:10 b1 Exp $";
 #include <netdb.h>
 #include <sys/ioctl.h>*/
 
+#include <Windows.h>
+
 #include "i_system.h"
 #include "d_event.h"
 #include "d_net.h"
@@ -73,12 +75,12 @@ boolean NetListen (void);
 // NETWORKING
 //
 
-//int	DOOMPORT =	(IPPORT_USERRESERVED +0x1d );
+int	DOOMPORT =	(0x400 + 0x1d); //CB: replace IPPORT_USERRESERVED with the windows equivalent
 
 int			sendsocket;
 int			insocket;
 
-//struct	sockaddr_in	sendaddress[MAXNETNODES];
+struct	sockaddr_in	sendaddress[MAXNETNODES];
 
 void	(*netget) (void);
 void	(*netsend) (void);
@@ -89,15 +91,14 @@ void	(*netsend) (void);
 //
 int UDPsocket (void)
 {
-    /*int	s;
+    int	s;
 	
     // allocate a socket
     s = socket (PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (s<0)
 	I_Error ("can't create socket: %s",strerror(errno));
 		
-    return s;*/
-	return 0;
+    return s;
 }
 
 //
@@ -108,7 +109,7 @@ BindToLocalPort
 ( int	s,
   int	port )
 {
-    /*int			v;
+    int			v;
     struct sockaddr_in	address;
 	
     memset (&address, 0, sizeof(address));
@@ -118,7 +119,7 @@ BindToLocalPort
 			
     v = bind (s, (void *)&address, sizeof(address));
     if (v == -1)
-	I_Error ("BindToPort: bind: %s", strerror(errno));*/
+	I_Error ("BindToPort: bind: %s", strerror(errno));
 }
 
 
@@ -127,7 +128,7 @@ BindToLocalPort
 //
 void PacketSend (void)
 {
-    /*int		c;
+    int		c;
     doomdata_t	sw;
 				
     // byte swap
@@ -152,7 +153,7 @@ void PacketSend (void)
 		,sizeof(sendaddress[doomcom->remotenode]));
 	
     //	if (c == -1)
-    //		I_Error ("SendPacket error: %s",strerror(errno));*/
+    //		I_Error ("SendPacket error: %s",strerror(errno));
 }
 
 
@@ -161,7 +162,7 @@ void PacketSend (void)
 //
 void PacketGet (void)
 {
-    /*int			i;
+    int			i;
     int			c;
     struct sockaddr_in	fromaddress;
     int			fromlen;
@@ -215,14 +216,14 @@ void PacketGet (void)
 	netbuffer->cmds[c].consistancy = ntohs(sw.cmds[c].consistancy);
 	netbuffer->cmds[c].chatchar = sw.cmds[c].chatchar;
 	netbuffer->cmds[c].buttons = sw.cmds[c].buttons;
-    }*/
+    }
 }
 
 
 
 int GetLocalAddress (void)
 {
-    /*char		hostname[1024];
+    char		hostname[1024];
     struct hostent*	hostentry;	// host information entry
     int			v;
 
@@ -235,7 +236,7 @@ int GetLocalAddress (void)
     if (!hostentry)
 	I_Error ("GetLocalAddress : gethostbyname: couldn't get local host");
 		
-    return *(int *)hostentry->h_addr_list[0];*/
+    return *(int *)hostentry->h_addr_list[0];
 	return 0;
 }
 
@@ -245,7 +246,7 @@ int GetLocalAddress (void)
 //
 void I_InitNetwork (void)
 {
-    /*boolean		trueval = true;
+    boolean		trueval = true;
     int			i;
     int			p;
     struct hostent*	hostentry;	// host information entry
@@ -328,15 +329,15 @@ void I_InitNetwork (void)
     // build message to receive
     insocket = UDPsocket ();
     BindToLocalPort (insocket,htons(DOOMPORT));
-    ioctl (insocket, FIONBIO, &trueval);
+    ioctlsocket (insocket, FIONBIO, &trueval);
 
-    sendsocket = UDPsocket ();*/
+    sendsocket = UDPsocket ();
 }
 
 
 void I_NetCmd (void)
 {
-    /*if (doomcom->command == CMD_SEND)
+    if (doomcom->command == CMD_SEND)
     {
 	netsend ();
     }
@@ -345,6 +346,6 @@ void I_NetCmd (void)
 	netget ();
     }
     else
-	I_Error ("Bad net cmd: %i\n",doomcom->command);*/
+	I_Error ("Bad net cmd: %i\n",doomcom->command);
 }
 
