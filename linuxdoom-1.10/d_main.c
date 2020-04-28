@@ -1105,7 +1105,8 @@ void D_DoomMain (void)
     printf ("I_Init: Setting up machine state.\n");
     I_Init ();
 
-    printf ("D_CheckNetGame: Checking network game status.\n");
+	// CB: networking not implemented yet. Crashes here. TODO: stub out enough networking to make it not crash.
+	printf ("D_CheckNetGame: Checking network game status.\n");
     D_CheckNetGame ();
 
     printf ("S_Init: Setting up sound.\n");

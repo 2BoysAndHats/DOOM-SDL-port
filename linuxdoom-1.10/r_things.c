@@ -188,7 +188,7 @@ void R_InitSpriteDefs (char** namelist)
 		
     // count the number of sprite names
     check = namelist;
-    while (*check != NULL)
+    while (*check != -1) // CB: replace check for a null pointer. Data immediately following is mean to be null, but isn't?
 	check++;
 
     numsprites = check-namelist;
@@ -250,7 +250,7 @@ void R_InitSpriteDefs (char** namelist)
 	{
 	    switch ((int)sprtemp[frame].rotate)
 	    {
-	      case -1:
+	      case 255: // CB: unsigned vs signed logic
 		// no rotations were found for that frame at all
 		I_Error ("R_InitSprites: No patches found "
 			 "for %s frame %c", namelist[i], frame+'A');

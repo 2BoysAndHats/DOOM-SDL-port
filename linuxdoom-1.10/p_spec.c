@@ -152,7 +152,7 @@ void P_InitPicAnims (void)
     
     //	Init animation
     lastanim = anims;
-    for (i=0 ; animdefs[i].istexture != -1 ; i++)
+    for (i=0 ; animdefs[i].istexture != 255 ; i++) // CB: signed integer stuff. Probably needs a better fix?
     {
 	if (animdefs[i].istexture)
 	{

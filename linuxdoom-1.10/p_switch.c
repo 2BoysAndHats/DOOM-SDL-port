@@ -134,8 +134,8 @@ void P_InitSwitchList(void)
 			
 	    if (R_CheckTextureNumForName(alphSwitchList[i].name1) < 0)
 	    {
-		I_Error("Can't find switch texture '%s'!",
-			alphSwitchList[i].name1);
+	    I_Error("Can't find switch texture '%s'!",
+		    alphSwitchList[i].name1);
 		continue;
 	    }
 	    
