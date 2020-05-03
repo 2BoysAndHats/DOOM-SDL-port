@@ -49,6 +49,10 @@ int XShmGetEventBase( Display* dpy ); // problems with g++?
 //#include <errnos.h>
 #include <signal.h>
 
+
+//CB: SDL imports
+#include <SDL.h>
+
 #include "doomstat.h"
 #include "i_system.h"
 #include "v_video.h"
@@ -77,6 +81,12 @@ boolean		doShm;
 XShmSegmentInfo	X_shminfo;
 int		X_shmeventtype;*/
 
+// CB: SDL-relevent variables
+SDL_Window* SDL_window = NULL;
+SDL_Renderer* SDL_renderer = NULL;
+SDL_Texture* SDL_doomTexture = NULL;
+int8_t colors[256 * 3]; // CB: new palettes
+
 // Fake mouse handling.
 // This cannot work properly w/o DGA.
 // Needs an invisible mouse cursor at least.
@@ -87,7 +97,7 @@ int		doPointerWarp = POINTER_WARP_COUNTDOWN;
 // replace each 320x200 pixel with multiply*multiply pixels.
 // According to Dave Taylor, it still is a bonehead thing
 // to use ....
-static int	multiply=1;
+static int	multiply=3;
 
 
 //
@@ -173,6 +183,9 @@ void I_ShutdownGraphics(void)
 
   // Paranoia.
   image->data = NULL;*/
+
+	SDL_DestroyWindow(SDL_window);
+	SDL_Quit();
 }
 
 
@@ -191,7 +204,7 @@ static int	lastmousey = 0;
 boolean		mousemoved = false;
 boolean		shmFinished;
 
-void I_GetEvent(void)
+bool I_GetEvent(void)
 {
 	/*
     event_t event;
@@ -276,6 +289,14 @@ void I_GetEvent(void)
 	break;
     }
 	*/
+
+	// CB: grab the latest SDL event, and convert it into a doom one.
+	SDL_Event e;
+	if (SDL_PollEvent(&e)) {
+		return true;
+	}
+
+	return false;
 }
 
 /*
@@ -336,6 +357,11 @@ void I_StartTic (void)
 
     mousemoved = false;
 	*/
+
+	if (SDL_window == NULL)
+		return;
+
+	while (I_GetEvent()) {};
 }
 
 
@@ -519,6 +545,30 @@ void I_FinishUpdate (void)
 
     }
 	*/
+	
+	//CB: write the image to the screen
+	// Clear the screen
+	SDL_SetRenderDrawColor(SDL_renderer, 0xff, 0xff, 0xff, 0xff);
+	SDL_RenderClear(SDL_renderer);
+
+	byte* pixels;
+	int pitch = SCREENWIDTH * 3; // bytes per row
+
+	SDL_LockTexture(SDL_doomTexture, NULL, &pixels, &pitch);
+
+	// Set each pixel of the output texture to the palette, using screens[0] as an index
+	for (int i = 0; i < SCREENWIDTH * SCREENHEIGHT; i++) {
+		pixels[i * 3] = colors[screens[0][i] * 3];
+		pixels[i * 3 + 1] = colors[screens[0][i] * 3 + 1];
+		pixels[i * 3 + 2] = colors[screens[0][i] * 3 + 2];
+	}
+	
+	SDL_UnlockTexture(SDL_doomTexture);
+
+	// And render the pixel array. This is where we scale to the appropriate size.
+	SDL_Rect dest = {0, 0, SCREENWIDTH * multiply, SCREENHEIGHT * multiply };
+	SDL_RenderCopy(SDL_renderer, SDL_doomTexture, NULL, &dest);
+	SDL_RenderPresent(SDL_renderer);
 }
 
 
@@ -527,7 +577,7 @@ void I_FinishUpdate (void)
 //
 void I_ReadScreen (byte* scr)
 {
-    //memcpy (scr, screens[0], SCREENWIDTH*SCREENHEIGHT);
+    memcpy (scr, screens[0], SCREENWIDTH*SCREENHEIGHT);
 }
 
 
@@ -536,53 +586,17 @@ void I_ReadScreen (byte* scr)
 //
 //static XColor	colors[256];
 
-/*void UploadNewPalette(Colormap cmap, byte *palette)
-{
-
-    register int	i;
-    register int	c;
-    static boolean	firstcall = true;
-
-#ifdef __cplusplus
-    if (X_visualinfo.c_class == PseudoColor && X_visualinfo.depth == 8)
-#else
-    if (X_visualinfo.class == PseudoColor && X_visualinfo.depth == 8)
-#endif
-	{
-	    // initialize the colormap
-	    if (firstcall)
-	    {
-		firstcall = false;
-		for (i=0 ; i<256 ; i++)
-		{
-		    colors[i].pixel = i;
-		    colors[i].flags = DoRed|DoGreen|DoBlue;
-		}
-	    }
-
-	    // set the X colormap entries
-	    for (i=0 ; i<256 ; i++)
-	    {
-		c = gammatable[usegamma][*palette++];
-		colors[i].red = (c<<8) + c;
-		c = gammatable[usegamma][*palette++];
-		colors[i].green = (c<<8) + c;
-		c = gammatable[usegamma][*palette++];
-		colors[i].blue = (c<<8) + c;
-	    }
-
-	    // store the colors to the current colormap
-	    XStoreColors(X_display, cmap, colors, 256);
-
-	}
-}*/
-
 //
 // I_SetPalette
 //
 void I_SetPalette (byte* palette)
 {
-    //UploadNewPalette(X_cmap, palette);
+	int c;
+	for (int i = 0; i < 256 * 3; i++)
+	{
+		c = gammatable[usegamma][*palette++];
+		colors[i] = (c << 8) + c;
+	}
 }
 
 
@@ -915,6 +929,31 @@ void I_InitGraphics(void)
     else
 	screens[0] = (unsigned char *) malloc (SCREENWIDTH * SCREENHEIGHT);
 	*/
+
+	// CB: a whole new SDL window-opening routine!
+	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+		I_Error("SDL failed to initalize. Error: %s\n", SDL_GetError());
+		return;
+	}
+
+	SDL_window = SDL_CreateWindow("DOOM-SDL-port", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREENWIDTH * multiply, SCREENHEIGHT * multiply, SDL_WINDOW_SHOWN);
+	if (SDL_window == NULL) {
+		I_Error("Window could not be created. Error: %s\n", SDL_GetError());
+		return;
+	}
+
+	SDL_renderer = SDL_CreateRenderer(SDL_window, -1, SDL_RENDERER_ACCELERATED);
+	if (SDL_renderer == NULL) {
+		I_Error("Renderer could not be created. Error: %s\n", SDL_GetError());
+		return;
+	}
+
+	SDL_doomTexture = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, SCREENWIDTH, SCREENHEIGHT);
+	if (SDL_doomTexture == NULL) {
+		I_Error("Texture could not be created. Error: %s\n", SDL_GetError());
+	}
+
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0); // set scaling to linear interpolation 
 }
 
 
@@ -922,11 +961,11 @@ unsigned	exptable[256];
 
 void InitExpand (void)
 {
-	/*
+	
     int		i;
 	
     for (i=0 ; i<256 ; i++)
-	exptable[i] = i | (i<<8) | (i<<16) | (i<<24);*/
+	exptable[i] = i | (i<<8) | (i<<16) | (i<<24);
 }
 
 double		exptable2[256*256];
