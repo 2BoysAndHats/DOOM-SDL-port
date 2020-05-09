@@ -390,8 +390,8 @@ bool I_GetEvent(void)
 		int relY = e.motion.yrel / multiply; // ditto.
 
 		event.data1 = (uint8_t)SDL_GetMouseState(NULL, NULL);
-		event.data2 = relX << 4; // Arbitrary multiplication factor (x16), to make mouse movement seem snappy
-		event.data3 = -relY << 4; // TODO: some sort of option?
+		event.data2 = relX << 4;
+		event.data3 = -relY << 4; 
 
 		if (event.data2 || event.data3)
 		{

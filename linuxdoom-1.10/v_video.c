@@ -215,9 +215,6 @@ V_DrawPatch
     byte*	dest;
     byte*	source; 
     int		w;
-
-	if (patch == 0)
-		return;
 	 
     y -= SHORT(patch->topoffset); 
     x -= SHORT(patch->leftoffset); 
