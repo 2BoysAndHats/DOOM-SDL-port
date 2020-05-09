@@ -25,7 +25,7 @@
 
 // We are referring to patches.
 #include "r_defs.h"
-
+#include <Windows.h>
 
 //
 // Background and foreground screen numbers
