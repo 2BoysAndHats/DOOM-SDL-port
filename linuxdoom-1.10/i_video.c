@@ -1038,7 +1038,7 @@ void I_InitGraphics(void)
 	*/
 
 	// CB: a whole new SDL window-opening routine!
-	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
 		I_Error("SDL failed to initalize. Error: %s\n", SDL_GetError());
 		return;
 	}
