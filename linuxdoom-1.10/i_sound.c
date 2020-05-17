@@ -45,6 +45,7 @@ rcsid[] = "$Id: i_unix.c,v 1.5 1997/02/03 22:45:10 b1 Exp $";
 //#include <linux/soundcard.h>
 
 #include <SDL_mixer.h> // CB: SDL sound output
+#include "pm_common\portmidi.h" // CB: midi output
 
 // Timer stuff. Experimental.
 #include <time.h>
@@ -57,6 +58,7 @@ rcsid[] = "$Id: i_unix.c,v 1.5 1997/02/03 22:45:10 b1 Exp $";
 #include "m_argv.h"
 #include "m_misc.h"
 #include "w_wad.h"
+#include "sounds.h"
 
 #include "doomdef.h"
 
@@ -152,8 +154,15 @@ int		vol_lookup[128 * 256];
 int*		channelleftvol_lookup[NUM_CHANNELS];
 int*		channelrightvol_lookup[NUM_CHANNELS];
 
+// Music registration and state arrays (CB)
+int musicHandles[NUMMUSIC]; // Holds a pointer to the music data registered by I_RegisterMusic
 
+int currentHandle = 0;
+int dataPointer = 0;
+int playing = 0;
+int musicWait = -1;
 
+PortMidiStream *midiStream;
 
 //
 // Safe ioctl, convenience.
@@ -671,6 +680,7 @@ I_SubmitSound(void)
 	// Write it to DSP device.
 	//write(audio_fd, mixbuffer, SAMPLECOUNT*BUFMUL);
 
+	// CB: send the mixbuffer to SDL audio
 	Mix_Chunk* chunk = Mix_QuickLoad_RAW(mixbuffer, SAMPLECOUNT * BUFMUL);
 	Mix_PlayChannel(-1, chunk, 0);
 }
@@ -742,62 +752,7 @@ void I_ShutdownSound(void)
 
 void
 I_InitSound()
-{ /*
-#ifdef SNDSERV
-  char buffer[256];
-
-  if (getenv("DOOMWADDIR"))
-	sprintf(buffer, "%s/%s",
-		getenv("DOOMWADDIR"),
-		sndserver_filename);
-  else
-	sprintf(buffer, "%s", sndserver_filename);
-
-  // start sound process
-  if ( !access(buffer, X_OK) )
-  {
-	strcat(buffer, " -quiet");
-	sndserver = popen(buffer, "w");
-  }
-  else
-	fprintf(stderr, "Could not start sound server [%s]\n", buffer);
-#else
-
-  int i;
-
-#ifdef SNDINTR
-  fprintf( stderr, "I_SoundSetTimer: %d microsecs\n", SOUND_INTERVAL );
-  I_SoundSetTimer( SOUND_INTERVAL );
-#endif
-
-  // Secure and configure sound device first.
-  fprintf( stderr, "I_InitSound: ");
-
-  audio_fd = open("/dev/dsp", O_WRONLY);
-  if (audio_fd<0)
-	fprintf(stderr, "Could not open /dev/dsp\n");
-
-
-  i = 11 | (2<<16);
-  myioctl(audio_fd, SNDCTL_DSP_SETFRAGMENT, &i);
-  myioctl(audio_fd, SNDCTL_DSP_RESET, 0);
-
-  i=SAMPLERATE;
-
-  myioctl(audio_fd, SNDCTL_DSP_SPEED, &i);
-
-  i=1;
-  myioctl(audio_fd, SNDCTL_DSP_STEREO, &i);
-
-  myioctl(audio_fd, SNDCTL_DSP_GETFMTS, &i);
-
-  if (i&=AFMT_S16_LE)
-	myioctl(audio_fd, SNDCTL_DSP_SETFMT, &i);
-  else
-	fprintf(stderr, "Could not play signed 16 data\n");
-
-  fprintf(stderr, " configured audio device\n" );*/
-
+{
 	// CB: init SDL audio
 	if (Mix_OpenAudio(SAMPLERATE, MIX_DEFAULT_FORMAT, 2, SAMPLECOUNT) < 0) {
 		printf("Mix_OpenAudio failed! SDL_mixer error: %s\n", Mix_GetError());
@@ -844,7 +799,31 @@ I_InitSound()
 // Still no music done.
 // Remains. Dummies.
 //
-void I_InitMusic(void) { }
+
+typedef struct _MUSheader {
+	char    ID[4];          // identifier "MUS" 0x1A
+	WORD    scoreLen;
+	WORD    scoreStart;
+	WORD    channels;	// count of primary channels
+	WORD    sec_channels;	// count of secondary channels
+	WORD    instrCnt;
+	WORD    dummy;
+	// variable-length part starts here
+	WORD    instruments[];
+} MUSheader;
+
+void I_InitMusic(void) {
+	int i;
+
+	// CB: fill musichandles with null pointers
+	for (i = 0; i < NUMMUSIC; i++) {
+		musicHandles[i] = 0;
+	}
+
+	// CB: init portmidi
+	Pm_Initialize();
+	Pm_OpenOutput(&midiStream, 1, NULL, 128, NULL, NULL, 0); // TODO: config option
+}
 void I_ShutdownMusic(void) { }
 
 static int	looping = 0;
@@ -852,9 +831,22 @@ static int	musicdies = -1;
 
 void I_PlaySong(int handle, int looping)
 {
-	// UNUSED.
-	handle = looping = 0;
-	musicdies = gametic + TICRATE * 30;
+	currentHandle = handle;
+	playing = true;
+
+	// Set instruments
+	MUSheader* header = musicHandles[currentHandle];
+
+	int instrument;
+	for (int i = 0; i < header->instrCnt; i++) {
+		instrument = header->instruments[i];
+		instrument = instrument > 135 ? instrument - 100 : instrument; // hacky
+
+		PmEvent e = { .message = Pm_Message(0b11000000 | i, instrument, 0),.timestamp = 0 };
+		Pm_Write(midiStream, &e, 1);
+	}
+
+	//musicdies = gametic + TICRATE * 30;
 }
 
 void I_PauseSong(int handle)
@@ -880,16 +872,25 @@ void I_StopSong(int handle)
 
 void I_UnRegisterSong(int handle)
 {
-	// UNUSED.
+	// CB: null out the relevant slot in musichandles
+	musicHandles[handle] = 0;
 	handle = 0;
 }
 
 int I_RegisterSong(void* data)
 {
-	// UNUSED.
-	data = NULL;
+	int i;
 
-	return 1;
+	// CB: find the first available slot in musichandles
+	for (i = 0; i < NUMMUSIC; i++) {
+		if (musicHandles[i] == 0)
+			break;
+	}
+
+	// and write our pointer to it
+	musicHandles[i] = data;
+
+	return i;
 }
 
 // Is the song playing?
@@ -900,6 +901,136 @@ int I_QrySongPlaying(int handle)
 	return looping || musicdies > gametic;
 }
 
+// Take in the data from the first byte of an event
+// read the next bytes as appropriate,
+// and pass it on to portmidi
+
+void processEvent(byte* data, int eventType, int channelNumber) {
+	PmEvent e; // the event we might send out to portmidi
+
+	switch (eventType) {
+		case 0:
+		{
+			// Release note
+			int noteNumber = data[++dataPointer];
+
+			e.message = Pm_Message(0b10000000 | channelNumber, noteNumber, 0);
+			e.timestamp = 0; // TODO: partially resolve timing issues brought up by quarter-tics (see time / 4 below)
+			Pm_Write(midiStream, &e, 1);
+			break;
+		}
+
+		case 1:
+		{
+			// Play note
+			int noteNumber = data[++dataPointer];
+			int volume = -1; // no change
+
+			if (noteNumber & 0b10000000) {
+				// we have a volume byte
+				noteNumber &= 0b01111111; // clear the volume bit
+				volume = data[++dataPointer];
+			}
+
+			e.message = Pm_Message(0b10010000 | channelNumber, noteNumber, volume);
+			e.timestamp = 0;
+			Pm_Write(midiStream, &e, 1);
+			break;
+		}
+
+		case 2:
+		{
+			// Pitch bend
+			int pitchBend = data[++dataPointer];
+			break;
+		}
+
+		case 3:
+		{
+			// System event
+			int systemEvent = data[++dataPointer];
+			break;
+		}
+
+		case 4:
+		{
+			// Change controller
+			int controllerNumber = data[++dataPointer];
+			int controllerValue = data[++dataPointer];
+			break;
+		}
+
+		case 5:
+		{
+			// unknown
+			break;
+		}
+
+		case 6:
+		{
+			// score end
+			break;
+		}
+
+		case 7:
+		{
+			//  unknown
+			break;
+		}
+	}
+}
+
+// Music update function
+void I_UpdateMusic()
+{
+
+	if (!playing)
+		return;
+
+	// Are we in the middle of waiting for an event?
+	if (musicWait != -1) {
+		musicWait--;
+		return;
+	}
+
+	MUSheader* header = musicHandles[currentHandle];
+	byte *data = musicHandles[currentHandle] + (header->scoreStart);
+
+	while (true) {
+		byte eventDescriptor = data[dataPointer];
+
+		int last = (eventDescriptor & 0b10000000) >> 7;
+		int eventType = (eventDescriptor & 0b01110000) >> 4;
+		int channelNumber = (eventDescriptor & 0b00001111);
+
+		processEvent(data, eventType, channelNumber);
+
+		byte time = 0;
+		// Read timing info
+		byte newByte = 0;
+		if (last) {
+
+			while (!(newByte & 128)) {
+				newByte = data[++dataPointer];
+				time = time * 128 + newByte & 127;
+			}
+
+			time = time / 4; // bit hacky. Needed to convert between music tics (1 / 140 of a second) and doom tics (1 / 35 of a second)
+		}
+
+		dataPointer++;
+
+		if (time != 0) {
+			musicWait = time;
+			break;
+		}
+
+		if (dataPointer > header->scoreLen) {
+			playing = looping; // If we're looping, play again. If not, stop.
+			dataPointer = 0;
+		}
+	}
+}
 
 
 //

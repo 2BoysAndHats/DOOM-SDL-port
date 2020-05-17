@@ -170,6 +170,10 @@ void S_Init
   I_SetChannels();
   
   S_SetSfxVolume(sfxVolume);
+
+  // CB: init music
+  I_InitMusic();
+
   // No music with Linux - another dummy.
   S_SetMusicVolume(musicVolume);
 
@@ -610,6 +614,7 @@ void S_UpdateSounds(void* listener_p)
     //      && !I_QrySongPlaying(mus_playing->handle)
     //      && !mus_paused )
     // S_StopMusic();
+	I_UpdateMusic();
 }
 
 
