@@ -45,7 +45,6 @@ rcsid[] = "$Id: i_unix.c,v 1.5 1997/02/03 22:45:10 b1 Exp $";
 //#include <linux/soundcard.h>
 
 #include <SDL_mixer.h> // CB: SDL sound output
-#include "pm_common\portmidi.h" // CB: midi output
 
 // Timer stuff. Experimental.
 #include <time.h>
@@ -800,18 +799,6 @@ I_InitSound()
 // Remains. Dummies.
 //
 
-typedef struct _MUSheader {
-	char    ID[4];          // identifier "MUS" 0x1A
-	WORD    scoreLen;
-	WORD    scoreStart;
-	WORD    channels;	// count of primary channels
-	WORD    sec_channels;	// count of secondary channels
-	WORD    instrCnt;
-	WORD    dummy;
-	// variable-length part starts here
-	WORD    instruments[];
-} MUSheader;
-
 void I_InitMusic(void) {
 	int i;
 
@@ -819,10 +806,6 @@ void I_InitMusic(void) {
 	for (i = 0; i < NUMMUSIC; i++) {
 		musicHandles[i] = 0;
 	}
-
-	// CB: init portmidi
-	Pm_Initialize();
-	Pm_OpenOutput(&midiStream, 1, NULL, 128, NULL, NULL, 0); // TODO: config option
 }
 void I_ShutdownMusic(void) { }
 
@@ -834,19 +817,7 @@ void I_PlaySong(int handle, int looping)
 	currentHandle = handle;
 	playing = true;
 
-	// Set instruments
-	MUSheader* header = musicHandles[currentHandle];
-
-	int instrument;
-	for (int i = 0; i < header->instrCnt; i++) {
-		instrument = header->instruments[i];
-		instrument = instrument > 135 ? instrument - 100 : instrument; // hacky
-
-		PmEvent e = { .message = Pm_Message(0b11000000 | i, instrument, 0),.timestamp = 0 };
-		Pm_Write(midiStream, &e, 1);
-	}
-
-	//musicdies = gametic + TICRATE * 30;
+	musicdies = gametic + TICRATE * 30;
 }
 
 void I_PauseSong(int handle)
@@ -864,7 +835,7 @@ void I_ResumeSong(int handle)
 void I_StopSong(int handle)
 {
 	// UNUSED.
-	handle = 0;
+	//handle = 0;
 
 	looping = 0;
 	musicdies = 0;
@@ -900,138 +871,6 @@ int I_QrySongPlaying(int handle)
 	handle = 0;
 	return looping || musicdies > gametic;
 }
-
-// Take in the data from the first byte of an event
-// read the next bytes as appropriate,
-// and pass it on to portmidi
-
-void processEvent(byte* data, int eventType, int channelNumber) {
-	PmEvent e; // the event we might send out to portmidi
-
-	switch (eventType) {
-		case 0:
-		{
-			// Release note
-			int noteNumber = data[++dataPointer];
-
-			e.message = Pm_Message(0b10000000 | channelNumber, noteNumber, 0);
-			e.timestamp = 0; // TODO: partially resolve timing issues brought up by quarter-tics (see time / 4 below)
-			Pm_Write(midiStream, &e, 1);
-			break;
-		}
-
-		case 1:
-		{
-			// Play note
-			int noteNumber = data[++dataPointer];
-			int volume = -1; // no change
-
-			if (noteNumber & 0b10000000) {
-				// we have a volume byte
-				noteNumber &= 0b01111111; // clear the volume bit
-				volume = data[++dataPointer];
-			}
-
-			e.message = Pm_Message(0b10010000 | channelNumber, noteNumber, volume);
-			e.timestamp = 0;
-			Pm_Write(midiStream, &e, 1);
-			break;
-		}
-
-		case 2:
-		{
-			// Pitch bend
-			int pitchBend = data[++dataPointer];
-			break;
-		}
-
-		case 3:
-		{
-			// System event
-			int systemEvent = data[++dataPointer];
-			break;
-		}
-
-		case 4:
-		{
-			// Change controller
-			int controllerNumber = data[++dataPointer];
-			int controllerValue = data[++dataPointer];
-			break;
-		}
-
-		case 5:
-		{
-			// unknown
-			break;
-		}
-
-		case 6:
-		{
-			// score end
-			break;
-		}
-
-		case 7:
-		{
-			//  unknown
-			break;
-		}
-	}
-}
-
-// Music update function
-void I_UpdateMusic()
-{
-
-	if (!playing)
-		return;
-
-	// Are we in the middle of waiting for an event?
-	if (musicWait != -1) {
-		musicWait--;
-		return;
-	}
-
-	MUSheader* header = musicHandles[currentHandle];
-	byte *data = musicHandles[currentHandle] + (header->scoreStart);
-
-	while (true) {
-		byte eventDescriptor = data[dataPointer];
-
-		int last = (eventDescriptor & 0b10000000) >> 7;
-		int eventType = (eventDescriptor & 0b01110000) >> 4;
-		int channelNumber = (eventDescriptor & 0b00001111);
-
-		processEvent(data, eventType, channelNumber);
-
-		byte time = 0;
-		// Read timing info
-		byte newByte = 0;
-		if (last) {
-
-			while (!(newByte & 128)) {
-				newByte = data[++dataPointer];
-				time = time * 128 + newByte & 127;
-			}
-
-			time = time / 4; // bit hacky. Needed to convert between music tics (1 / 140 of a second) and doom tics (1 / 35 of a second)
-		}
-
-		dataPointer++;
-
-		if (time != 0) {
-			musicWait = time;
-			break;
-		}
-
-		if (dataPointer > header->scoreLen) {
-			playing = looping; // If we're looping, play again. If not, stop.
-			dataPointer = 0;
-		}
-	}
-}
-
 
 //
 // Experimental stuff.
