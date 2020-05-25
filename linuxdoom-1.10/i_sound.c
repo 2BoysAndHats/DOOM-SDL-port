@@ -161,8 +161,6 @@ int dataPointer = 0;
 int playing = 0;
 int musicWait = -1;
 
-PortMidiStream *midiStream;
-
 //
 // Safe ioctl, convenience.
 //

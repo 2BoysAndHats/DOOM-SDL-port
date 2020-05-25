@@ -614,7 +614,6 @@ void S_UpdateSounds(void* listener_p)
     //      && !I_QrySongPlaying(mus_playing->handle)
     //      && !mus_paused )
     // S_StopMusic();
-	I_UpdateMusic();
 }
 
 
