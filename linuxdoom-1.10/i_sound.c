@@ -45,6 +45,7 @@ rcsid[] = "$Id: i_unix.c,v 1.5 1997/02/03 22:45:10 b1 Exp $";
 //#include <linux/soundcard.h>
 
 #include <SDL_mixer.h> // CB: SDL sound output
+#include <fluidsynth.h>
 
 // Timer stuff. Experimental.
 #include <time.h>
@@ -155,11 +156,13 @@ int*		channelrightvol_lookup[NUM_CHANNELS];
 
 // Music registration and state arrays (CB)
 int musicHandles[NUMMUSIC]; // Holds a pointer to the music data registered by I_RegisterMusic
+int musicLengths[NUMMUSIC]; // How long is each piece of music?
 
-int currentHandle = 0;
-int dataPointer = 0;
 int playing = 0;
-int musicWait = -1;
+
+
+fluid_synth_t* synth = NULL;
+fluid_player_t* player = NULL;
 
 //
 // Safe ioctl, convenience.
@@ -812,10 +815,37 @@ static int	musicdies = -1;
 
 void I_PlaySong(int handle, int looping)
 {
-	currentHandle = handle;
 	playing = true;
 
-	musicdies = gametic + TICRATE * 30;
+	if (player != NULL) {
+		fluid_player_stop(player);
+	}
+
+	// CB: for whatever reason,
+	// every time we want to change songs
+	// (and so instruments)
+	// we have to reload *everything*
+
+	fluid_settings_t* settings;
+	fluid_audio_driver_t* adriver;
+	settings = new_fluid_settings();
+
+	synth = new_fluid_synth(settings); // the thing that actually plays the audio
+
+	fluid_settings_setstr(settings, "audio.driver", "sdl2");
+	adriver = new_fluid_audio_driver(settings, synth);
+
+	// load our soundfont
+	// TODO: command line argument
+	fluid_synth_sfload(synth, "SGM-V2.01.sf2", false);
+
+	player = new_fluid_player(synth);
+
+	fluid_player_set_loop(player, looping == true ? -1 : 1);
+	fluid_player_add_mem(player, musicHandles[handle], musicLengths[handle]);
+	fluid_player_play(player);
+
+	// musicdies = gametic + TICRATE * 30;
 }
 
 void I_PauseSong(int handle)
@@ -835,22 +865,25 @@ void I_StopSong(int handle)
 	// UNUSED.
 	//handle = 0;
 
+	//fluid_player_stop(player);
+
 	looping = 0;
 	musicdies = 0;
 }
 
 void I_UnRegisterSong(int handle)
 {
-	// CB: null out the relevant slot in musichandles
+	// CB: null out the relevant slot in musicHandles and musicLengths
 	musicHandles[handle] = 0;
+	musicLengths[handle] = 0;
+
 	handle = 0;
 }
 
-int I_RegisterSong(void* data)
+int I_RegisterSong(void* data, int dataLen)
 {
-	int i;
-
 	// CB: find the first available slot in musichandles
+	int i;
 	for (i = 0; i < NUMMUSIC; i++) {
 		if (musicHandles[i] == 0)
 			break;
@@ -858,6 +891,7 @@ int I_RegisterSong(void* data)
 
 	// and write our pointer to it
 	musicHandles[i] = data;
+	musicLengths[i] = dataLen;
 
 	return i;
 }
