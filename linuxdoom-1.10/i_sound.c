@@ -837,7 +837,7 @@ void I_PlaySong(int handle, int looping)
 
 	// load our soundfont
 	// TODO: command line argument
-	fluid_synth_sfload(synth, "SGM-V2.01.sf2", false);
+	fluid_synth_sfload(synth, "soundfont.sf2", false);
 
 	player = new_fluid_player(synth);
 
