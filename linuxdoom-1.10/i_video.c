@@ -92,7 +92,7 @@ int8_t colors[256 * 3]; // CB: new palettes
 // Needs an invisible mouse cursor at least.
 boolean		grabMouse;
 int		doPointerWarp = POINTER_WARP_COUNTDOWN;
-
+	
 // Blocky mode,
 // replace each 320x200 pixel with multiply*multiply pixels.
 // According to Dave Taylor, it still is a bonehead thing
